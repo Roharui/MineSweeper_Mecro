@@ -37,7 +37,6 @@ class Reader:
         for i in range(self.count[1]):
             for j in range(self.count[0]):
                 _ = 1 - self.img[i * self.y + 2:(i + 1) * self.y -3, j * self.x + 1:(j + 1) * self.x -3]
-                _ = cv2.resize(_, (20, 21), interpolation=cv2.INTER_AREA)
                 lst.append(_)
         
         lst = np.array(lst).reshape(-1, 20, 21, 3)

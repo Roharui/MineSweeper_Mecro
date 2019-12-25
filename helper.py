@@ -7,8 +7,8 @@ import seaborn as sns
 from random import randint
 from time import sleep
 
-XY1 = (1364, 139)
-XY2 = (1758, 878)
+XY1 = (1403, 180)
+XY2 = (1801, 928)
 COUNT = (16, 30)
 
 X = int((XY2[0] - XY1[0]) / COUNT[0]) + 1
