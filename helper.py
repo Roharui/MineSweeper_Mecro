@@ -6,29 +6,38 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from random import randint
 from time import sleep
+from Combinate import Decart, combination
 
-XY1 = (1403, 180)
-XY2 = (1801, 928)
-COUNT = (16, 30)
+SIZEX, SIZEY = (480, 256)
+XY1 = (1360, 100)
+XY2 = (XY1[0] + SIZEX, XY1[1] + SIZEY)
+COUNT = (30, 16)
+RESET = (1594, 83)
+MCOUNT = 99
 
-X = int((XY2[0] - XY1[0]) / COUNT[0]) + 1
-Y = int((XY2[1] - XY1[1]) / COUNT[1]) + 1
+X = 16#int((XY2[0] - XY1[0]) / COUNT[0]) + 1
+Y = 16#int((XY2[1] - XY1[1]) / COUNT[1]) + 1
+plt.ion()
 
 class Helper:
-
+    count_m = 0
     class Calculater:
-        def __init__(self):
+        isDone = False
+        dcart = Decart()
+        def __init__(self, preant):
             self.reader = Reader(XY1, XY2, COUNT)
+            self.preant = preant
+
+            np.save('datax', [])
+            np.save('datay', [])
 
         def pretreat(self):
             self.space = self.reader.read()
-            sns.heatmap(self.space, annot=True)
-            plt.show()
             self.canClick = np.zeros(self.space.shape) - 1
             self.mine = []
 
         def getNumber(self):
-            a, b = np.where((self.space > 0) * (self.space < 6))
+            a, b = np.where((self.space > 0) * (self.space < 7))
             return [[i, j] for i, j in zip(a, b)]
 
         def getEdge(self, loc):
@@ -42,9 +51,9 @@ class Helper:
                     if i == 0 and j == 0: continue
                     if y + i < 0 or x + j < 0: continue
                     try:
-                        if self.space[y + i, x + j] == 6:
+                        if self.space[y + i, x + j] == 7:
                             edge.append([y + i, x + j])
-                        elif self.space[y + i, x + j] == 7:
+                        elif self.space[y + i, x + j] == 8:
                             num -= 1
                     except IndexError:
                         pass
@@ -56,11 +65,10 @@ class Helper:
             mine = np.copy(self.canClick)
             
             for y, x in edge:
-                if num == 0:
-                    mine[y, x] = 0
                 mine[y, x] = num / len(edge)
 
-            self.mine.append(mine)
+            if edge:
+                self.mine.append(mine)
 
         def realPersent(self):
             mine = np.max(self.mine, axis=0)
@@ -74,30 +82,91 @@ class Helper:
             l = [[i, j] for i, j in zip(c, d)]
 
             if len(r) == 0 and len(l) == 0:
-                ac = np.abs(self.mine)
-                a, b = np.where(ac == np.min(ac))
-                l = [[a[0], b[0]]]
-
-                #sns.heatmap(ac, annot=True)
-                #plt.show()
-
+                '''
+                self.combinateEdge()
+                self.find_ctd()
+                for i in self.result:
+                    self.reader.showT(i)
+                
+                auto.click(RESET)
+                '''
+                a, b = np.where(self.mine + self.space == 6)
+                #print((MCOUNT - self.preant.count_m)/a.shape[0])
+                #print(np.min(np.abs(self.mine)))
+                if (MCOUNT - self.preant.count_m)/a.shape[0] > np.min(np.abs(self.mine)):
+                    ac = np.abs(self.mine)
+                    a, b = np.where(ac == np.min(ac))
+                rand = randint(0, len(a) - 1)
+                l = [[a[rand], b[rand]]]
+                
+            #self.save((r, l))
+            
             return (r, l)
+        
+        def checkBoom(self):
+            if np.where(self.space == 9)[0].shape[0] > 0:
+                return True
 
+        def combinateEdge(self):
+            self.clst = [self.getEdge(x) for x in self.getNumber()]
+            self.cdlst = []
+
+            for num, edge in self.clst:
+                self.cdlst.append(combination(edge, num))
+
+        def find_ctd(self):
+            result = self.cdlst[0]
+            for i in range(1, len(self.clst)):
+                self.dcart.setAB(self.clst[i - 1][1], self.clst[i][1])
+                self.dcart.make(result, self.cdlst[i])
+                result = self.dcart.data
+            self.result = result
+
+        def save(self, loc):
+            datax = np.load('datax.npy')
+            datay = np.load('datay.npy')
+            
+            datay_ = np.zeros(self.space.shape)
+            right, left = loc
+
+            for i in right:
+                datay_[i[0], i[1]] = -1
+            for i in left:
+                datay_[i[0], i[1]] = 1
+
+            print(datax.shape)
+
+            if datax.shape[0] == 0:
+                datax = self.space[np.newaxis]
+                datay = datay_[np.newaxis]
+            else:
+                datax = np.append(datax, self.space[np.newaxis], axis=0)
+                datay = np.append(datay, datay_[np.newaxis], axis=0)
+
+
+            
+            np.save('datax.npy', datax)
+            np.save('datay.npy', datay)
 
         def do(self):
             self.pretreat()
+            if self.checkBoom(): return True 
             [self.persent(i) for i in self.getNumber()]
             self.realPersent()
-            #sns.heatmap(self.mine, annot=True)
-            #plt.show()
+            #plt.clf()
+            #sns.heatmap(self.mine, annot=False, cbar=False,  linewidths=.5, vmin=0, vmax=1)
+            #plt.draw()
+            #plt.pause(0.01)
 
     def __init__(self):
-        self.calc = self.Calculater()
-        self.clickL([randint(0, COUNT[1]), randint(0, COUNT[0])])
+        self.calc = self.Calculater(self)
+        auto.click(RESET)
+        auto.click(RESET)
+        self.clickL([randint(0, COUNT[1] - 1) , randint(0, COUNT[0] - 1)])
     
     def do(self):
         self.home()
-        self.calc.do()
+        if self.calc.do(): return True
 
         right, left = self.calc.clickWhere()
 
@@ -108,13 +177,16 @@ class Helper:
             self.clickL(loc)
 
     def clickR(self, loc):
+        self.count_m += 1
         y, x = loc
+        print(f"x : {x}, y : {y} - Right")
         self.home()
         auto.moveRel((x * X) + 3, (y * Y) + 3)
         auto.rightClick()
         
     def clickL(self, loc):
         y, x = loc
+        print(f"x : {x}, y : {y} - Left")
         self.home()
         auto.moveRel((x * X) + 3, (y * Y) + 3)
         auto.click()
@@ -122,11 +194,22 @@ class Helper:
     def home(self):
         auto.moveTo(x=XY1[0], y=XY1[1])
 
-    def away(self):
-        auto.moveTo(0, 0)
-
 if __name__ == "__main__":
-    h = Helper()
-    for i in range(100):
-        h.do()
-        sleep(0.2)
+    #sns.heatmap(np.zeros(COUNT))
+    #plt.draw()
+    #plt.pause(0.1)
+    input("Start?")
+    
+    isDone = True
+
+    while isDone:
+        h = Helper()
+        for i in range(1000):
+            if MCOUNT - h.count_m == 0:
+                isDone = False
+                break
+            print("%d번 턴"%i)
+            if h.do():
+                break
+            sleep(0.05)
+    
